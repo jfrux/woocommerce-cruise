@@ -20,14 +20,15 @@ function wc_cruise_init() {
 
 add_action('plugins_loaded', 'wc_cruise_init', 10);
 
-function add_settings_link( $links ) {
+function wc_cruise_add_settings_link( $links ) {
     $settings_link = '<a href="options-general.php?page=wc_cruise_options">'.__('Settings','wc_cruise').'</a>';
     array_push( $links, $settings_link );
     return $links;
 }
 
+
 // add settings link
 $plugin = plugin_basename( __FILE__ );
-add_filter( 'plugin_action_links_' . $plugin, 'add_settings_link');
+add_filter( 'plugin_action_links_' . $plugin, 'wc_cruise_add_settings_link');
 
 load_plugin_textdomain('wc_cruise', false, basename(dirname(__FILE__)).'/languages/');

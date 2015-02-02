@@ -8,16 +8,18 @@ class WC_CRUISE extends WC_AJAX {
         $this->options = get_option('wc_cruise_options');
         //add_action( 'woocommerce_cart_calculate_fees', 'wc_cruise_add_tax_gratuity' );
         add_action( 'wp_enqueue_scripts', array( $this, 'wc_cruise_enqueue_scripts' ));
-        add_action( 'woocommerce_product_options_pricing', array( $this, 'wc_cruise_add_product_option_pricing' ));
+        add_action( 'woocommerce_product_options_general_product_data', array( $this, 'wc_cruise_add_product_option_pricing' ));
         add_action( 'woocommerce_process_product_meta', array( $this, 'wc_cruise_add_custom_price_fields_save' ));
-        add_action( 'woocommerce_before_add_to_cart_button', array( $this, 'wc_cruise_before_add_to_cart_button' ));
-        add_filter( 'woocommerce_get_price_html', array( $this, 'wc_cruise_add_price_html' ), 10, 2 );
-        add_action( 'wp_ajax_add_new_price', array( $this, 'wc_cruise_get_new_price' ));
-        add_action( 'wp_ajax_nopriv_add_new_price', array( $this, 'wc_cruise_get_new_price' ));
-        add_filter( 'add_to_cart_fragments', array( $this, 'wc_cruise_new_price_fragment' ));
+        add_filter( 'woocommerce_before_add_to_cart_button', array( $this, 'wc_cruise_before_add_to_cart_button' ));
+        // add_filter( 'woocommerce_get_price_html', array( $this, 'wc_cruise_add_price_html' ), 10, 2 );
+        add_action( 'wp_ajax_cruise_check_avail', array( $this, 'wc_cruise_check_avail' ));
+        // add_action( 'wp_ajax_cruise_nopriv_add_new_price', array( $this, 'wc_cruise_get_new_price' ));
+        // add_filter( 'add_to_cart_fragments', array( $this, 'wc_cruise_new_price_fragment' ));
         add_filter( 'woocommerce_loop_add_to_cart_link', array($this, 'wc_cruise_custom_loop_add_to_cart' ), 10, 2 );
+        
     }
 
+    
     public function wc_cruise_enqueue_scripts() {
         global $woocommerce, $post;
 
@@ -55,45 +57,45 @@ class WC_CRUISE extends WC_AJAX {
     public function wc_cruise_add_product_option_pricing() {
 
         global $woocommerce, $post;
-        echo '<div class="show_if_variable options_group">';
+        echo '<div class="options_group">';
 
             // Checkbox
             woocommerce_wp_checkbox(array(
                 'id' => '_cruise_booking_option', 
                 'class' => 'wc_booking_option checkbox', 
-                'wrapper_class' => 'show_if_variable',
+                'wrapper_class' => '',
                 'label' => __( 'Enable Cruise Booking Option', 'wc_cruise' )
             ));
             woocommerce_wp_text_input(array(
                 'id' => '_cruise_price_single', 
                 'class' => 'wc_booking_price text', 
-                'wrapper_class' => 'show_if_variable',
+                'wrapper_class' => '',
                 'label' => __( 'Single Price', 'wc_cruise' )
             ));
             woocommerce_wp_text_input(array(
                 'id' => '_cruise_price_double', 
                 'class' => 'wc_booking_price text', 
-                'wrapper_class' => 'show_if_variable',
+                'wrapper_class' => '',
                 'label' => __( 'Double Price', 'wc_cruise' )
             ));
             woocommerce_wp_text_input(array(
                 'id' => '_cruise_price_triple', 
                 'class' => 'wc_booking_price text',
-                'wrapper_class' => 'show_if_variable',
+                'wrapper_class' => '',
                 'label' => __( 'Triple Price', 'wc_cruise' )
             ));
 
             woocommerce_wp_text_input(array(
                 'id' => '_cruise_price_quad', 
                 'class' => 'wc_booking_price text', 
-                'wrapper_class' => 'show_if_variable',
+                'wrapper_class' => '',
                 'label' => __( 'Quad Price', 'wc_cruise' )
             ));
 
             woocommerce_wp_text_input(array(
                 'id' => '_cruise_price_quint', 
                 'class' => 'wc_booking_price text', 
-                'wrapper_class' => 'show_if_variable',
+                'wrapper_class' => '',
                 'label' => __( 'Quint Price', 'wc_cruise' )
             ));
 
@@ -130,17 +132,15 @@ class WC_CRUISE extends WC_AJAX {
             $woocommerce->cart->add_fee( __('Taxes and Gratuity ($200 x # of guests)', 'woocommerce'), $taxes_gratuity, true, 'standard' );
         }
     }
-    
     // Add custom form to the product page.
     public function wc_cruise_before_add_to_cart_button() {
         global $woocommerce, $post, $product;
-
         $wc_cruise_options = get_post_meta($post->ID, '_cruise_booking_option', true);
         if (isset($wc_cruise_options) && $wc_cruise_options) {
             echo '<div class="wc_cruise_errors">' . wc_print_notices() . '</div>
                 <p>
-                    <label for="guests">' . __( $this->options['wc_cruise_guests_text'], 'wc_cruise' ) . ' : </label>
-                    <select name="guests" id="guests" data-product_id="' . $product->id . '" data-value="">
+                    <label for="pa_guests">' . __( $this->options['wc_cruise_guests_text'], 'wc_cruise' ) . ' : </label>
+                    <select name="attribute_pa_guests" id="pa_guests" data-product_id="' . $product->id . '" data-value="">
                         <option value="1">1</option>
                         <option value="2">2</option>
                         <option value="3">3</option>
@@ -150,7 +150,7 @@ class WC_CRUISE extends WC_AJAX {
                 </p>';
         }
     }
-
+    
     // Display base price or new price
     public function wc_cruise_add_price_html($content) {
 
@@ -195,15 +195,38 @@ class WC_CRUISE extends WC_AJAX {
 
     }
 
-    // Calculate new price, update product meta and refresh fragments
-    public function wc_cruise_get_new_price() {
-
-        global $woocommerce, $post;
+    //GET BEST AVAILABLE ROOM & PRICE
+    public function wc_cruise_check_avail() {
+        global $woocommerce, $wpdb, $product, $post;
         $product = new WC_Product(the_ID());
-
-        $output = isset($_POST['guests']) ? $_POST['guests'] : 1;
-        $product_id = isset($_POST['product_id']) ? $_POST['product_id'] : $product->id;
-        $guests = isset($_POST['guests']) ? $_POST['guests'] : '';
+        $product_id = isset($_REQUEST['product_id']) ? $_REQUEST['product_id'] : $product->id;
+        $guests = isset($_REQUEST['guests']) ? $_REQUEST['guests'] : '';
+        
+        // $product->get_post_data();
+        $output = isset($_REQUEST['guests']) ? $_REQUEST['guests'] : 1;
+        // $available_variations = $product->get_available_variations();
+        $querystr = "
+            SELECT
+                `post`.`ID`,
+                (SELECT meta_value FROM wp_postmeta As `meta` WHERE post_id=`post`.`ID` AND `meta`.`meta_key` = '_stock') As stock, 
+                (SELECT meta_value FROM wp_postmeta As `meta` WHERE post_id=`post`.`ID` AND `meta`.`meta_key` = 'attribute_pa_guests') As max_guests,
+                (SELECT meta_value FROM wp_postmeta As `meta` WHERE post_id=`post`.`post_parent` AND `meta`.`meta_key` = '_cruise_price_single') As price_1, 
+                (SELECT meta_value FROM wp_postmeta As `meta` WHERE post_id=`post`.`post_parent` AND `meta`.`meta_key` = '_cruise_price_double') As price_2,  
+                (SELECT meta_value FROM wp_postmeta As `meta` WHERE post_id=`post`.`post_parent` AND `meta`.`meta_key` = '_cruise_price_triple') As price_3,  
+                (SELECT meta_value FROM wp_postmeta As `meta` WHERE post_id=`post`.`post_parent` AND `meta`.`meta_key` = '_cruise_price_quad') As price_4,  
+                (SELECT meta_value FROM wp_postmeta As `meta` WHERE post_id=`post`.`post_parent` AND `meta`.`meta_key` = '_cruise_price_quint') As price_5
+            FROM wp_posts As post
+            WHERE
+                post_parent=" . $product_id . " AND
+                post_type='product_variation' AND
+                (SELECT meta_value FROM wp_postmeta As `meta` WHERE post_id=`post`.`ID` AND `meta`.`meta_key` = '_max_occupancy') >= " . $guests . "
+            ORDER BY 
+                (SELECT meta_value FROM wp_postmeta As `meta` WHERE post_id=`post`.`ID` AND `meta`.`meta_key` = '_max_occupancy')
+            LIMIT 1
+         ";
+        $rooms = $wpdb->get_results($querystr, OBJECT);
+        
+        wp_send_json($rooms[0]);
         
         switch ($guests) {
             case 1:
@@ -228,7 +251,7 @@ class WC_CRUISE extends WC_AJAX {
         if ( $output <= 0 ) {
             $error_code = 1;
         }
-
+        
         // Show error message
         if ( $error_code ) {
             $error_message = $this->wc_cruise_get_error( $error_code );
@@ -266,29 +289,29 @@ class WC_CRUISE extends WC_AJAX {
     }
 
     // Update product meta (New price, start date and end date)
-    public function wc_cruise_update_product_meta( $product_id, $price, $new_price, $guests ) {
+    // public function wc_cruise_update_product_meta( $product_id, $price, $new_price, $guests ) {
 
-        global $woocommerce, $post, $product;
+    //     global $woocommerce, $post, $product;
 
-        if ( get_post_meta($product_id, '_new_price', true ) ) {
-            update_post_meta($product_id, '_new_price', $new_price);
-        } else {
-            add_post_meta($product_id, '_new_price', $new_price, true);
-        }
+    //     if ( get_post_meta($product_id, '_new_price', true ) ) {
+    //         update_post_meta($product_id, '_new_price', $new_price);
+    //     } else {
+    //         add_post_meta($product_id, '_new_price', $new_price, true);
+    //     }
 
-        if ( get_post_meta($product_id, '_price_per_person', true ) ) {
-            update_post_meta($product_id, '_price_per_person', $price);
-        } else {
-            add_post_meta($product_id, '_price_per_person', $price, true);
-        }
+    //     if ( get_post_meta($product_id, '_price_per_person', true ) ) {
+    //         update_post_meta($product_id, '_price_per_person', $price);
+    //     } else {
+    //         add_post_meta($product_id, '_price_per_person', $price, true);
+    //     }
 
-        if ( get_post_meta($product_id, '_guests', true ) ) {
-            update_post_meta($product_id, '_guests', $guests);
-        } else {
-            add_post_meta($product_id, '_guests', $guests, true);
-        }
+    //     if ( get_post_meta($product_id, '_guests', true ) ) {
+    //         update_post_meta($product_id, '_guests', $guests);
+    //     } else {
+    //         add_post_meta($product_id, '_guests', $guests, true);
+    //     }
 
-    }
+    // }
 
     // Update error messages with Ajax
     public function wc_cruise_error_fragment( $messages ) {
@@ -349,4 +372,4 @@ class WC_CRUISE extends WC_AJAX {
 
 }
 
-$wcebs = new WC_CRUISE;
+$wccruise = new WC_CRUISE;

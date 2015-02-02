@@ -11,51 +11,92 @@ class WC_CRUISE_Cart extends WC_Cart {
         add_filter('woocommerce_get_cart_item_from_session', array( $this, 'wc_cruise_get_cart_item_from_session'), 10, 2);
         add_filter('woocommerce_get_item_data', array( $this, 'wc_cruise_get_item_data'), 10, 2);
         add_filter('woocommerce_add_cart_item', array( $this, 'wc_cruise_add_cart_item'), 10, 1);
+        //add_filter('woocommerce_add_to_cart_action', array( $this, 'wc_cruise_validate_cart' ), 1, 5 );
+        
     }
+    
+    function wc_cruise_validate_cart() {
+        var_dump($cart_item_meta);
+        exit;
+        return;
+    }
+
 
     function wc_cruise_add_cart_item_data($cart_item_meta, $product_id) {
         global $woocommerce;
- 
-        $booking_price = get_post_meta($product_id, '_new_price', true);
+        $guests = $_POST['attribute_pa_guests'];
+        switch (intval($guests)) {
+          case 1:
+            $custom_price = get_post_meta($product_id, '_cruise_price_single', true);
+          break;
+          case 2:
+            $custom_price = get_post_meta($product_id, '_cruise_price_double', true);
+          break;
+          case 3:
+            $custom_price = get_post_meta($product_id, '_cruise_price_triple', true);
+          break;
+          case 4:
+            $custom_price = get_post_meta($product_id, '_cruise_price_quad', true);
+          break;
+          case 5:
+            $custom_price = get_post_meta($product_id, '_cruise_price_quint', true);
+          break;
+        }
+        $booking_price = $custom_price;
         $base_price = get_post_meta($product_id, '_price', true);
-        $price = get_post_meta($product_id, '_guests', true);
-
-        $cart_item_meta['_new_price'] = $booking_price;
-        $cart_item_meta['_guests'] = $price;
-
-        $this->wc_cruise_reset_product_meta( $product_id, $base_price, $price );
+        $guests = get_post_meta($product_id, 'attribute_pa_guests', true);
+        $cart_item_meta['_new_price'] = $custom_price;
+        $cart_item_meta['_guests'] = $guests;
+        //wp_send_json($cart_item_meta);
+        // var_dump($cart_item_meta);
+        // die;
+        // $this->wc_cruise_reset_product_meta( $product_id, $base_price, $price );
         
         return $cart_item_meta;
     }
  
     function wc_cruise_get_cart_item_from_session($cart_item, $values) {
-
         // Add the form options meta to the cart item in case you want to do special stuff on the check out page.
-        if (isset($values['_new_price'])) {
-            $cart_item['_new_price'] = $values['_new_price'];
+        $guests = intval($values['variation']['attribute_pa_guests']);
+        //wp_send_json();
+        
+        switch ($guests) {
+          case 1:
+            $custom_price = intval($cart_item['data']->product_custom_fields['_cruise_price_single'][0]);
+          break;
+          case 2:
+            $custom_price = intval($cart_item['data']->product_custom_fields['_cruise_price_double'][0]);
+          break;
+          case 3:
+            $custom_price = intval($cart_item['data']->product_custom_fields['_cruise_price_triple'][0]);
+          break;
+          case 4:
+            $custom_price = intval($cart_item['data']->product_custom_fields['_cruise_price_quad'][0]);
+          break;
+          case 5:
+            $custom_price = intval($cart_item['data']->product_custom_fields['_cruise_price_quint'][0]);
+          break;
         }
-
-        if (isset($values['_guests'])) {
-            $cart_item['_guests'] = $values['_guests'];
-        }
-
-        $this->wc_cruise_add_cart_item($cart_item);
+        
+        $cart_item['data']->set_price($custom_price*$guests);
+        //wp_send_json($cart_item);
+        //$this->wc_cruise_add_cart_item($cart_item);
      
         return $cart_item;
     }
 
     // Reset meta data after adding to cart
-    function wc_cruise_reset_product_meta( $product_id, $base_price, $price) {
+    // function wc_cruise_reset_product_meta( $product_id, $base_price, $price) {
 
-        if ( get_post_meta( $product_id, '_new_price', true ) ) {
-            update_post_meta($product_id, '_new_price', $base_price);
-        }
+    //     if ( get_post_meta( $product_id, '_new_price', true ) ) {
+    //         update_post_meta($product_id, '_new_price', $base_price);
+    //     }
 
-        if ( get_post_meta( $product_id, '_guests', true ) ) {
-            delete_post_meta($product_id, '_guests', $price);
-        }
+    //     if ( get_post_meta( $product_id, '_guests', true ) ) {
+    //         delete_post_meta($product_id, '_guests', $price);
+    //     }
 
-    }
+    // }
  
     function wc_cruise_get_item_data($other_data, $cart_item) {
 
@@ -69,20 +110,34 @@ class WC_CRUISE_Cart extends WC_Cart {
 
         return $other_data;
     }
- 
+    
     function wc_cruise_add_cart_item($cart_item) {
         global $woocommerce;
- 
-        if ( isset($cart_item['_new_price']) && $cart_item['_new_price'] > 0 ) {
-            $booking_price = $cart_item['_new_price'];
-            $cart_item['data']->set_price($booking_price);
+        $product_id = $cart_item['product_id'];
+        $guests = $_POST['attribute_pa_guests'];
+        switch (intval($guests)) {
+          case 1:
+            $custom_price = get_post_meta($product_id, '_cruise_price_single', true);
+          break;
+          case 2:
+            $custom_price = get_post_meta($product_id, '_cruise_price_double', true);
+          break;
+          case 3:
+            $custom_price = get_post_meta($product_id, '_cruise_price_triple', true);
+          break;
+          case 4:
+            $custom_price = get_post_meta($product_id, '_cruise_price_quad', true);
+          break;
+          case 5:
+            $custom_price = get_post_meta($product_id, '_cruise_price_quint', true);
+          break;
         }
- 
+        $booking_price = $custom_price;
+        //wp_send_json($custom_price*$guests);
+        $cart_item['data']->set_price($custom_price*$guests);
+        //wp_send_json($booking_price);
         return $cart_item;
     }
-
-
-
 }
 
 new WC_CRUISE_Cart();
